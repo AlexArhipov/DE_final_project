@@ -1,0 +1,85 @@
+--########################################## Заполняю накопительные и мета таблицы из временных ################################################
+declare -- dim_terminals
+    i integer := 0;
+begin
+    for z in (select terminal, terminal_type, city, address, datee from stg_terminals order by datee) loop
+        MERGE INTO dim_terminals T1
+        USING (SELECT z.terminal as a FROM dual) T2
+        ON (T1.terminal_id = T2.a)
+        WHEN MATCHED THEN
+            UPDATE SET T1.update_dt = TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss')
+        WHEN NOT MATCHED THEN 
+            insert (terminal_id, terminal_type, terminal_city, terminal_address, create_dt, update_dt) values(z.terminal, z.terminal_type, z.city, z.address, TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'), TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'));
+        i := i + 1; 
+    end loop;
+    insert into meta_terminals(num_update, update_dt, count_new_insert) values(meta_terminals_seq.NEXTVAL, sysdate, i);
+end;
+
+declare -- dim_cards
+    i integer := 0;
+begin
+    for z in (select card, account, datee from stg_cards order by datee) loop
+        MERGE INTO dim_cards T1
+        USING (SELECT z.card as a FROM dual) T2
+        ON (T1.card = T2.a)
+        WHEN MATCHED THEN
+            UPDATE SET T1.update_dt = TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss')
+        WHEN NOT MATCHED THEN 
+            insert (card, account_num, create_dt, update_dt) values(z.card, z.account, TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'), TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'));
+        i := i + 1; 
+    end loop;
+    insert into meta_cards(num_update, update_dt, count_new_insert) values(meta_cards_seq.NEXTVAL, sysdate, i);
+end;
+
+
+declare --stg_accounts
+    i integer := 0;
+begin
+    for z in (select account, account_valid_to, client, datee from stg_accounts order by datee) loop
+        MERGE INTO dim_accounts T1
+        USING (SELECT z.account as a FROM dual) T2
+        ON (T1.account_num = T2.a)
+        WHEN MATCHED THEN
+            UPDATE SET T1.update_dt = TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss')
+        WHEN NOT MATCHED THEN 
+            insert (account_num, valid_to, client, create_dt, update_dt) values(z.account, TO_DATE(z.account_valid_to, 'MM/DD/YYYY'), z.client, TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'), TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'));
+        i := i + 1; 
+    end loop;
+    insert into meta_accounts(num_update, update_dt, count_new_insert) values(meta_accounts_seq.NEXTVAL, sysdate, i);
+end;
+
+
+declare --stg_clients
+    i integer := 0;
+begin
+    for z in (select client, last_name, first_name, patronymic, date_of_birth, passport, passport_valid_to, phone, datee from stg_clients order by datee) loop
+        MERGE INTO dim_clients T1
+        USING (SELECT z.client as a FROM dual) T2
+        ON (T1.client_id = T2.a)
+        WHEN MATCHED THEN
+            UPDATE SET T1.update_dt = TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss')
+        WHEN NOT MATCHED THEN
+            insert (client_id, last_name, first_name, patrinymic, date_of_birth, passport_num, passport_valid_to, phone, create_dt, update_dt) 
+            values(z.client, z.last_name, z.first_name, z.patronymic, TO_DATE(z.date_of_birth, 'MM/DD/YYYY'), z.passport, TO_DATE(z.passport_valid_to, 'MM/DD/YYYY'), z.phone, TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'), TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'));
+        i := i + 1; 
+    end loop;
+    insert into meta_clients(num_update, update_dt, count_new_insert) values(meta_clients_seq.NEXTVAL, sysdate, i);
+end;
+
+
+declare --stg_transactions
+    i integer := 0;
+begin
+    for z in (select trans_id, datee, card, oper_type, amount, oper_result, terminal from stg_transactions order by datee) loop
+        MERGE INTO fact_transactions T1
+        USING (SELECT z.trans_id as a FROM dual) T2
+        ON (T1.trans_id = T2.a)
+        WHEN MATCHED THEN
+            UPDATE SET T1.update_dt = TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss')
+        WHEN NOT MATCHED THEN 
+            insert (trans_id, trans_date, cadr_num, oper_type, amt, oper_result, terminal, create_dt, update_dt) 
+            values(z.trans_id, TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'), z.card, z.oper_type, z.amount, z.oper_result, z.terminal, TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'), TO_DATE(z.datee, 'DD/MM/YYYY hh24:mi:ss'));
+        i := i + 1; 
+    end loop;
+    insert into meta_transactions(num_update, update_dt, count_new_insert) values(meta_transactions_seq.NEXTVAL, sysdate, i);
+end;

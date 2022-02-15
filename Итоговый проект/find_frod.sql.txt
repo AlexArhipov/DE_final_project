@@ -1,0 +1,53 @@
+--########################################## Бизнес логика + создание индексов ################################################
+
+    CREATE INDEX dim_terminals_idx ON
+    dim_terminals(terminal_id);
+    CREATE INDEX dim_cards_idx ON
+    dim_cards(account_num);
+    CREATE INDEX dim_clients_idx ON
+    dim_clients(client_id);
+    CREATE INDEX dim_accounts_idx ON
+    dim_accounts(client);
+    CREATE INDEX fact_transactions_idx ON
+    fact_transactions(terminal);
+    
+-- запрос на объеденение данных   
+with V4 as
+    (select V2.card, V2.account_num, V2.client_id, V2.FIO, V2.date_of_birth, V2.passport_num, V2.passport_valid_to, V2.phone, V2.valid_to,
+    V3.terminal_id, V3.terminal_type, V3.terminal_city, V3.terminal_address, V3.trans_id, V3.trans_date, V3.oper_type, V3.amt, V3.oper_result
+    FROM 
+        (select dim_terminals.terminal_id, fact_transactions.cadr_num, fact_transactions.oper_result, dim_terminals.terminal_type, dim_terminals.terminal_city, dim_terminals.terminal_address, fact_transactions.trans_id, fact_transactions.trans_date, fact_transactions.oper_type, fact_transactions.amt
+        from fact_transactions INNER JOIN dim_terminals ON dim_terminals.terminal_id = fact_transactions.terminal) V3
+    INNER JOIN    
+        (select dim_cards.card, dim_cards.account_num, V1.client_id, V1.FIO, V1.date_of_birth, V1.passport_num, V1.passport_valid_to, V1.phone, V1.valid_to
+        from 
+            (select dim_clients.client_id, dim_clients.last_name || ' ' || dim_clients.first_name || ' ' || dim_clients.patrinymic AS FIO, dim_clients.date_of_birth, dim_clients.passport_num, dim_clients.passport_valid_to, dim_clients.phone, dim_accounts.account_num, dim_accounts.valid_to, dim_accounts.client
+                from dim_clients INNER JOIN dim_accounts ON dim_accounts.client = dim_clients.client_id) V1
+            INNER JOIN dim_cards ON dim_cards.account_num = V1.account_num) V2
+    ON V3.cadr_num = V2.card)
+
+
+select trans_date FRAUD_DT, passport_num PASSPORT, FIO, phone PHONE, 'Совершение операции при просроченном паспорте' FRAUD_TYPE, sysdate REPORT_DT
+  from V4 where passport_valid_to < trans_date
+UNION
+select trans_date FRAUD_DT, passport_num PASSPORT, FIO, phone PHONE, 'Совершение операции при недействующем договоре' FRAUD_TYPE, sysdate REPORT_DT
+  from V4 where valid_to < trans_date
+UNION
+select max(V4.trans_date) FRAUD_DT, V4.passport_num PASSPORT, max(V4.FIO) FIO, max(V4.phone) PHONE, 'Совершение операции в разных городах в течение 1 часа' FRAUD_TYPE, max(sysdate) REPORT_DT
+  from V4, V4 V5
+  where V4.card = V5.card 
+  and V4.terminal_city <> V5.terminal_city 
+  and V4.trans_date between V5.trans_date-1/12/2 and V5.trans_date+1/12/2
+  group by V4.passport_num
+UNION
+Select DISTINCT FRAUD_DT, PASSPORT, FIO, PHONE, FRAUD_TYPE, sysdate REPORT_DT from (
+	select FRAUD_DT, oper_result, amt, prev_amt, SUM(prev_amt) OVER (PARTITION BY PASSPORT) sum_sal, PASSPORT, FIO, PHONE, FRAUD_TYPE, rn from(
+		select V4.trans_date FRAUD_DT, V4.oper_result, V4.amt, nvl(case when LEAD (V4.amt,1) over (PARTITION BY V4.passport_num ORDER BY V4.trans_date)-V4.amt > 0 then 1 end, 0)  AS prev_amt, V4.passport_num PASSPORT, V4.FIO FIO, V4.phone PHONE, 'Попытка подбора сумм' FRAUD_TYPE, sysdate REPORT_DT, ROW_NUMBER() OVER(PARTITION BY V4.passport_num ORDER BY V4.trans_date) rn
+			from V4, V4 V5
+			where V4.card = V5.card 
+			and V4.oper_result <> V5.oper_result 
+			and V4.trans_date between V5.trans_date-1/12/6 and V5.trans_date+1/12/6
+			order by 1)
+		)
+  where rn >3 and oper_result = 'Успешно' and sum_sal = 0 and rn > 3
+

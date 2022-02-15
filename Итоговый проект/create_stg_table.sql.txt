@@ -1,0 +1,25 @@
+--########################################## Создаю временныетаблицы из transactions1 (загруженные значения) ################################################
+drop table stg_terminals;
+CREATE GLOBAL TEMPORARY TABLE stg_terminals 
+ON COMMIT PRESERVE ROWS 
+AS SELECT DISTINCT terminal, terminal_type, city, address, datee FROM transactions1 order by datee;
+
+drop table stg_cards;
+CREATE GLOBAL TEMPORARY TABLE stg_cards
+ON COMMIT PRESERVE ROWS 
+AS SELECT card, account, datee FROM transactions1 order by datee;
+
+drop table stg_accounts;
+CREATE GLOBAL TEMPORARY TABLE stg_accounts  
+ON COMMIT PRESERVE ROWS 
+AS SELECT DISTINCT account, account_valid_to, client, datee FROM transactions1 order by datee;
+
+drop table stg_transactions;
+CREATE GLOBAL TEMPORARY TABLE stg_transactions 
+ON COMMIT PRESERVE ROWS 
+AS SELECT DISTINCT trans_id, datee, card, oper_type, amount, oper_result, terminal FROM transactions1 order by datee;
+
+drop table stg_clients;
+CREATE GLOBAL TEMPORARY TABLE stg_clients  
+ON COMMIT PRESERVE ROWS 
+AS SELECT DISTINCT client, last_name, first_name, patronymic, date_of_birth, passport, passport_valid_to, phone, datee FROM transactions1 order by datee;

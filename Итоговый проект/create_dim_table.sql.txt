@@ -1,0 +1,55 @@
+--########################################## Создаю накопительные таблицы, мета таблицы и счетчики ################################################
+drop table dim_terminals;
+create table dim_terminals(terminal_id varchar2(100), terminal_type varchar2(100), terminal_city varchar2(100), terminal_address varchar2(500), create_dt date, update_dt date);
+
+drop SEQUENCE meta_terminals_seq;
+CREATE SEQUENCE meta_terminals_seq
+  MINVALUE 1
+  START WITH 1
+  INCREMENT BY 1;
+drop table meta_terminals;
+create table meta_terminals(num_update varchar2(20), update_dt date, count_new_insert integer)
+--##########################################
+drop table dim_cards;
+create table dim_cards(card varchar2(100), account_num varchar2(100), create_dt date, update_dt date);
+
+drop SEQUENCE meta_cards_seq;
+CREATE SEQUENCE meta_cards_seq
+  MINVALUE 1
+  START WITH 1
+  INCREMENT BY 1;
+drop table meta_cards;
+create table meta_cards(num_update varchar2(20), update_dt date, count_new_insert integer)
+--##########################################
+drop table dim_accounts;
+create table dim_accounts(account_num varchar2(100), valid_to date, client varchar2(100), create_dt date, update_dt date);
+
+drop SEQUENCE meta_accounts_seq;
+CREATE SEQUENCE meta_accounts_seq
+  MINVALUE 1
+  START WITH 1
+  INCREMENT BY 1;
+drop table meta_accounts;
+create table meta_accounts(num_update varchar2(20), update_dt date, count_new_insert integer)
+--##########################################
+drop table fact_transactions;
+create table fact_transactions(trans_id varchar2(100), trans_date date, cadr_num varchar2(100), oper_type varchar2(100), amt decimal (9,2), oper_result varchar2(100), terminal varchar2(100), create_dt date, update_dt date);
+
+drop SEQUENCE meta_transactions_seq;
+CREATE SEQUENCE meta_transactions_seq
+  MINVALUE 1
+  START WITH 1
+  INCREMENT BY 1;
+drop table meta_transactions;
+create table meta_transactions(num_update varchar2(20), update_dt date, count_new_insert integer)
+--##########################################
+drop table dim_clients;
+create table dim_clients(client_id varchar2(100), last_name varchar2(100), first_name varchar2(100), patrinymic varchar2(100), date_of_birth date, passport_num varchar2(100), passport_valid_to date, phone varchar2(100), create_dt date, update_dt date);
+
+drop SEQUENCE meta_clients_seq;
+CREATE SEQUENCE meta_clients_seq
+  MINVALUE 1
+  START WITH 1
+  INCREMENT BY 1;
+drop table meta_clients;
+create table meta_clients(num_update varchar2(20), update_dt date, count_new_insert integer);
